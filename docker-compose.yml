@@ -13,7 +13,7 @@ services:
     ports:
       - "9200:9200"
     volumes:
-      - esdata:/usr/share/elasticsearch/data
+      - bevel_esdata:/usr/share/elasticsearch/data
     networks:
       - backend_network
 
@@ -33,22 +33,23 @@ services:
 
   # 3) Postgres
   postgres:
-    image: postgres:15
+    image: postgres:latest
     container_name: postgres_local
+    user: postgres
     environment:
-      - POSTGRES_USER=bevel
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=bevel
+      POSTGRES_DB: bevel
+      POSTGRES_USER: bevel
+      POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "54328:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - bevel_pgdata:/var/lib/postgresql/data
     networks:
       - backend_network
 
 volumes:
-  esdata:
-  pgdata:
+  bevel_esdata:
+  bevel_pgdata:
 
 networks:
   backend_network:

@@ -1,9 +1,6 @@
-# bevel-backend-takehome-food
+# Backend Take-Home Template
 
-```markdown
-# Backend Take-Home: Docker Setup
-
-Welcome to the **Backend Take-Home** assignment repository! This README describes how to install and run Docker so that you can spin up the necessary services (e.g., PostgreSQL, Elasticsearch, and others) for this project.
+Welcome to the **Backend Take-Home** assignment repository! This README describes how to install and run Docker so that you can spin up the necessary services (e.g., PostgreSQL, Elasticsearch, and others) for this project. This template also contains an example express server that demonstrates how to connect to the services.
 
 ## 1. Install Docker
 
@@ -15,7 +12,7 @@ Docker is a containerization platform that allows you to run software and servic
 
 - **Linux**:  
   1. Refer to the [Docker Engine installation instructions for Linux](https://docs.docker.com/engine/install/).
-  2. (Optional) If you want to avoid using \`sudo\` every time, follow [Post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/) to add your user to the \`docker\` group.
+  2. (Optional) If you want to avoid using `sudo` every time, follow [Post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/) to add your user to the `docker` group.
 
 ## 2. Verify Docker Installation
 
@@ -37,9 +34,9 @@ If Docker is running, this command should succeed (you might see no running cont
 
 ## 3. Bring Up Services with Docker Compose
 
-In this repository, there should be a file named \docker-compose.yml\ which defines the services you need (e.g., PostgreSQL, Elasticsearch, etc.).
+In this repository, there should be a file named `docker-compose.yml` which defines the services you need (e.g., PostgreSQL, Elasticsearch, etc.).
 
-1. **Navigate** to the project folder containing \docker-compose.yml:
+1. **Navigate** to the project folder containing `docker-compose.yml`:
    ```bash
    cd bevel-backend-takehome-food
    ```
@@ -51,12 +48,12 @@ In this repository, there should be a file named \docker-compose.yml\ which defi
    ```bash
    docker compose up
    ```
-   - This command reads \docker-compose.yml\ and pulls the required images if they’re not already on your machine.
+   - This command reads `docker-compose.yml` and pulls the required images if they’re not already on your machine.
    - It then starts each container in the configuration.
 
 ### 3.1 Running in the Background
 
-If you don’t want to watch the logs in your terminal, add the \-d\ flag to run in detached mode:
+If you don’t want to watch the logs in your terminal, add the `-d` flag to run in detached mode:
 ```bash
 docker-compose up -d
 ```
@@ -64,7 +61,7 @@ _(The containers will continue running in the background.)_
 
 ### 3.2 Shutting Down
 
-Press \Ctrl + C\ (in foreground mode) or run:
+Press `Ctrl + C` (in foreground mode) or run:
 ```bash
 docker-compose down
 ```
@@ -73,8 +70,8 @@ to stop and remove the containers.
 ## 4. Troubleshooting
 
 - **“Cannot connect to the Docker daemon”** or **FileNotFoundError**: Ensure Docker Desktop (Mac/Windows) or the Docker service (Linux) is running.
-- **“No such file or directory”**: Make sure you’re running \docker-compose\ from the same directory where \docker-compose.yml\ is located.
-- **Permissions** (Linux): If you need to use \sudo docker-compose ...\ each time, consider adding your user to the \docker\ group (see [Linux post-install](https://docs.docker.com/engine/install/linux-postinstall/)).
+- **“No such file or directory”**: Make sure you’re running `docker-compose` from the same directory where `docker-compose.yml` is located.
+- **Permissions** (Linux): If you need to use `sudo docker-compose ...` each time, consider adding your user to the `docker` group (see [Linux post-install](https://docs.docker.com/engine/install/linux-postinstall/)).
 
 ## 5. Further Reading
 
@@ -82,7 +79,6 @@ to stop and remove the containers.
 - [Docker Compose Overview](https://docs.docker.com/compose/)
 
 You should now be ready to run Docker services for this take-home assignment. If you have any questions or run into issues, let us know!
-```
 
 # Backend Setup
 An example express server in provided in the /app directory. You can modify the server to your needs.
@@ -98,3 +94,36 @@ npm install -g yarn
 ```
 yarn install
 ```
+
+## Run the server
+
+```
+yarn dev
+```
+
+# Run health checks
+
+After starting the server, you should be able to check `localhost:3000/health` to see if the server is running and the db connection is working.
+
+You can also check `localhost:3000/search` to see if the connection to Elasticsearch is working.
+
+# Troubleshooting
+
+### Cannot find database user
+If you see an error similar to
+```
+{"error":"role \"myuser\" does not exist"} 
+``` 
+when running the db health check, then it could be because the postgres container is colliding with an existing process that is using the same port. The db port is set to `54328` in the docker-compose.yml file. You can change the port in the file to something else, but make sure to update the port in the db.ts file as well.
+
+When restarting the postgres container for debugging, you may need to force delete the volume as well, which is where the data is stored. You can do this by running:
+
+```
+docker compose down --volumes
+docker compose up --force-recreate
+```
+You can also check running volumes with:
+```
+docker volume ls
+```
+and terminate any hanging volumes that match the name of the volume in the docker-compose.yml file.

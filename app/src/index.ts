@@ -21,32 +21,18 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-// Example endpoint: get all rows from a table
-app.get('/items', async (_req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM items');
-    res.json(rows);
-  } catch (error: any) {
-    console.error('Error in /items:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Example endpoint: search documents in Elasticsearch
+// TODO: Replace with actual search endpoint. For now, this just serves as a health check.
 app.get('/search', async (req, res) => {
   const query: string = req.query.q as string ?? '';
   try {
-    const result = await esClient.search({
-      index: 'my_index',
-      query: {
-        match: {
-          message: query,
-        },
-      },
+    const indices = await esClient.cat.indices({ format: 'json' });
+    res.json({
+      status: 'ok',
+      indices: indices,
     });
-    res.json(result.hits.hits);
   } catch (error: any) {
-    console.error('Error in /search:', error);
+    console.error('Error in /indices:', error);
     res.status(500).json({ error: error.message });
   }
 });
