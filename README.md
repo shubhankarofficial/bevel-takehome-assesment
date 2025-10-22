@@ -1,6 +1,6 @@
 # Backend Take-Home Template
 
-Welcome to the **Backend Take-Home** assignment repository! This README describes how to install and run Docker so that you can spin up the necessary services (e.g., PostgreSQL, Elasticsearch, and others) for this project. This template also contains an example express server that demonstrates how to connect to the services.
+Welcome to the **Backend Take-Home** assignment repository! This README describes how to install and run Docker so that you can spin up the necessary services (e.g., PostgreSQL, Elasticsearch, and others) for this project. This template contains boilerplate servers in both TypeScript (Express.js) and Python (FastAPI) that demonstrate how to connect to the services.
 
 ## 1. Install Docker
 
@@ -81,7 +81,24 @@ to stop and remove the containers.
 You should now be ready to run Docker services for this take-home assignment. If you have any questions or run into issues, let us know!
 
 # Backend Setup
-An example express server in provided in the /app directory. You can modify the server to your needs.
+
+Two boilerplate implementations are provided for the backend take-home assessment. Choose the language you're most comfortable with:
+
+## Option 1: TypeScript/Node.js (app-ts)
+An Express.js server implementation with TypeScript. See `/app-ts/README.md` for setup instructions.
+
+## Option 2: Python (app-py)
+A FastAPI server implementation with Python. See `/app-py/README.md` for setup instructions.
+
+Both implementations provide identical functionality:
+- PostgreSQL database connection
+- Elasticsearch client integration
+- Health check endpoints
+- Example search endpoint
+
+---
+
+## TypeScript Setup (app-ts)
 
 ## Install global dependencies
 
@@ -101,6 +118,43 @@ yarn install
 yarn dev
 ```
 
+---
+
+## Python Setup (app-py)
+
+### Create virtual environment
+
+```
+cd app-py
+python -m venv venv
+```
+
+### Activate virtual environment
+
+**On macOS/Linux:**
+```
+source venv/bin/activate
+```
+
+**On Windows:**
+```
+venv\Scripts\activate
+```
+
+### Install dependencies
+
+```
+pip install -r requirements.txt
+```
+
+### Run the server
+
+```
+uvicorn src.main:app --reload --port 3000
+```
+
+---
+
 # Run health checks
 
 After starting the server, you should be able to check `localhost:3000/health` to see if the server is running and the db connection is working.
@@ -114,7 +168,7 @@ If you see an error similar to
 ```
 {"error":"role \"myuser\" does not exist"} 
 ``` 
-when running the db health check, then it could be because the postgres container is colliding with an existing process that is using the same port. The db port is set to `54328` in the docker-compose.yml file. You can change the port in the file to something else, but make sure to update the port in the db.ts file as well.
+when running the db health check, then it could be because the postgres container is colliding with an existing process that is using the same port. The db port is set to `54328` in the docker-compose.yml file. You can change the port in the file to something else, but make sure to update the port in your application configuration (db.ts for TypeScript or db.py for Python) as well.
 
 When restarting the postgres container for debugging, you may need to force delete the volume as well, which is where the data is stored. You can do this by running:
 
