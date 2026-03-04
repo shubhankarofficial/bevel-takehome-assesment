@@ -1,17 +1,16 @@
-import os
+"""Elasticsearch client. Uses central config for connection URL."""
+
 from elasticsearch import AsyncElasticsearch
 
-# Elasticsearch configuration
-ES_URL = os.getenv('ELASTICSEARCH_URL', 'http://localhost:9200')
+from .config import ELASTICSEARCH_URL
 
-# Create async Elasticsearch client
 es_client = AsyncElasticsearch(
-    hosts=[ES_URL],
-    verify_certs=False,  # For local development
-    ssl_show_warn=False
+    hosts=[ELASTICSEARCH_URL],
+    verify_certs=False,
+    ssl_show_warn=False,
 )
 
 
-async def close_es_client():
+async def close_es_client() -> None:
     """Close the Elasticsearch client connection."""
     await es_client.close()
