@@ -33,7 +33,11 @@ services:
 
   # 3) Postgres
   postgres:
-    image: postgres:latest
+    # NOTE: pinned to Postgres 16 instead of "latest" because
+    # Postgres 18+ images changed the data directory layout and
+    # require a different volume mount; using 16 preserves the
+    # original template configuration and avoids startup errors.
+    image: postgres:16
     container_name: postgres_local
     user: postgres
     environment:
