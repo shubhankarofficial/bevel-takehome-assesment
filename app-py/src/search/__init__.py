@@ -1,9 +1,7 @@
 """
 Search package.
 
-Responsible for everything related to Elasticsearch:
-- Index management for the foods index.
-- Search strategies.
-- High-level search service used by the API layer.
+Responsible for Elasticsearch: index management (FoodSearchIndex), search strategies.
+The high-level search use case is in services (SearchService); API talks to services.
 """
 

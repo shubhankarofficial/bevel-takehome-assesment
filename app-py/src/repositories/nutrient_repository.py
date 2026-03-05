@@ -1,0 +1,86 @@
+"""
+Repository for the nutrients table in Postgres.
+"""
+
+import logging
+from typing import Any, Dict, List, Optional, Tuple
+
+import asyncpg
+
+logger = logging.getLogger(__name__)
+
+
+class NutrientRepository:
+    """
+    Repository for nutrient reference data (id, name, unit_name).
+    """
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        self._pool = pool
+
+    async def bulk_insert(
+        self,
+        rows: List[Tuple[int, Optional[str], Optional[str]]],
+    ) -> int:
+        """
+        Insert many rows into nutrients. Each row is (id, name, unit_name).
+        Returns the number of rows inserted.
+        """
+        if not rows:
+            return 0
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.executemany(
+                    """
+                    INSERT INTO nutrients (id, name, unit_name)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (id) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        unit_name = EXCLUDED.unit_name
+                    """,
+                    rows,
+                )
+            logger.info("NutrientRepository.bulk_insert completed: inserted %s rows", len(rows))
+            return len(rows)
+        except Exception as e:
+            logger.exception(
+                "NutrientRepository.bulk_insert failed: %s rows, error=%s",
+                len(rows),
+                e,
+            )
+            raise
+
+    async def get_by_id(self, nutrient_id: int) -> Optional[Dict[str, Any]]:
+        """Fetch a single nutrient row by id."""
+        try:
+            async with self._pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT id, name, unit_name
+                    FROM nutrients
+                    WHERE id = $1
+                    """,
+                    nutrient_id,
+                )
+            if row is not None:
+                logger.debug("NutrientRepository.get_by_id found: nutrient_id=%s", nutrient_id)
+            return dict(row) if row is not None else None
+        except Exception as e:
+            logger.exception(
+                "NutrientRepository.get_by_id failed: nutrient_id=%s, error=%s",
+                nutrient_id,
+                e,
+            )
+            raise
+
+    async def count(self) -> int:
+        """Return total number of rows in nutrients (for logging/observability)."""
+        try:
+            async with self._pool.acquire() as conn:
+                n = await conn.fetchval("SELECT COUNT(*) FROM nutrients")
+            count = int(n)
+            logger.debug("NutrientRepository.count: %s", count)
+            return count
+        except Exception as e:
+            logger.exception("NutrientRepository.count failed: error=%s", e)
+            raise

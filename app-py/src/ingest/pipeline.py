@@ -1,46 +1,57 @@
 """
-Ingestion pipeline skeleton.
+Ingestion pipeline: CSV load into DB, then index foods into Elasticsearch.
 
-This module will orchestrate:
-- Parsing USDA CSV files.
-- Inserting data into Postgres via repositories.
-- Triggering Elasticsearch indexing via the FoodSearchIndex facade.
+Orchestrates CsvLoadService (parse CSVs → repositories) and FoodIndexingService
+(read from Postgres → build ES documents). Schema is applied separately via
+MigrationService.
 """
-
-from typing import Any
 
 import asyncpg
 
-from ..config import (
-    FOOD_CSV_PATH,
-    FOOD_NUTRIENT_CSV_PATH,
-    NUTRIENT_CSV_PATH,
-    INGEST_DB_BATCH_SIZE,
-)
+from ..elastic_search import FoodSearchIndex
 from ..es_client import es_client
-from ..repositories.food_repository import FoodRepository
 from ..repositories.food_nutrient_repository import FoodNutrientRepository
-from ..search.food_search_index import FoodSearchIndex
+from ..repositories.food_repository import FoodRepository
+from ..repositories.nutrient_repository import NutrientRepository
+from ..services.csv_load_service import CsvLoadService
+from ..services.food_indexing_service import FoodIndexingService
+from ..services.migration_service import MigrationService
 
 
 class IngestPipeline:
     """
-    High-level orchestrator for one-time or repeated data ingestion.
+    High-level orchestrator for data ingestion:
+    - Load CSVs into Postgres via CsvLoadService.
+    - Index foods into Elasticsearch via FoodIndexingService.
     """
 
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
+        self._migrations = MigrationService(pool)
+        self._nutrient_repo = NutrientRepository(pool)
         self._food_repo = FoodRepository(pool)
         self._food_nutrient_repo = FoodNutrientRepository(pool)
+        self._csv_load = CsvLoadService(
+            self._nutrient_repo,
+            self._food_repo,
+            self._food_nutrient_repo,
+        )
         self._search_index = FoodSearchIndex(es_client)
+        self._food_indexing = FoodIndexingService(
+            pool=self._pool,
+            food_repo=self._food_repo,
+            food_nutrient_repo=self._food_nutrient_repo,
+            search_index=self._search_index,
+        )
 
     async def run(self) -> None:
         """
-        Entry point for the ingestion pipeline.
-
-        Implementation details (schema creation, CSV parsing, DB writes, indexing)
-        will be filled in in subsequent steps.
+        Run the full ingest:
+        - run database migrations (idempotent; safe to re-run)
+        - load CSVs into Postgres (nutrients → foods → food_nutrients)
+        - index foods into Elasticsearch for search by name.
         """
-        # Placeholder to establish structure. Logic will follow.
-        pass
+        await self._migrations.run()
+        await self._csv_load.load_all()
+        await self._food_indexing.reindex_all()
 
