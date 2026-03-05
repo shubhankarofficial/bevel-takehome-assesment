@@ -1,4 +1,4 @@
-"""File system paths (CSV directory, etc.)."""
+"""File system paths (CSV directory, migrations, etc.)."""
 
 import os
 from pathlib import Path
@@ -9,3 +9,6 @@ CSV_DIR = Path(os.getenv("CSV_DIR", str(_DEFAULT_CSV_DIR)))
 FOOD_CSV_PATH = CSV_DIR / "food.csv"
 FOOD_NUTRIENT_CSV_PATH = CSV_DIR / "food_nutrient.csv"
 NUTRIENT_CSV_PATH = CSV_DIR / "nutrient.csv"
+
+# Ingest migrations (run in order by MigrationService)
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "ingest" / "migrations"
