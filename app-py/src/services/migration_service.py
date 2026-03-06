@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 def _split_sql_statements(content: str) -> List[str]:
-    """Split SQL file by semicolon; return non-empty stripped statements."""
+    """Split SQL file by semicolon; return non-empty stripped statements.
+    If content contains $$ (e.g. function body), return [content] so the whole file runs as one."""
+    if "$$" in content:
+        return [content] if content.strip() else []
     parts = content.split(";")
     return [p.strip() for p in parts if p.strip()]
 

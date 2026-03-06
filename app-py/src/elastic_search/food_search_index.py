@@ -37,7 +37,10 @@ class FoodSearchIndex:
             mappings={
                 "properties": {
                     "fdc_id": {"type": "long"},
-                    "name": {"type": "text"},
+                    "name": {
+                        "type": "text",
+                        "fields": {"keyword": {"type": "keyword"}},
+                    },
                     "nutrients": {
                         "properties": {
                             "type": {"type": "keyword"},
@@ -82,4 +85,15 @@ class FoodSearchIndex:
         Delete a food document from the index if it exists.
         """
         await self._es.delete(index=self._index, id=doc_id, ignore=[404])
+
+    async def delete_index(self) -> None:
+        """
+        Delete the entire index if it exists. Use before a full reindex to avoid stale documents.
+        """
+        exists = await self._es.indices.exists(index=self._index)
+        if exists:
+            await self._es.indices.delete(index=self._index)
+            logger.info("FoodSearchIndex: deleted index %s", self._index)
+        else:
+            logger.info("FoodSearchIndex: index %s does not exist, nothing to delete", self._index)
 

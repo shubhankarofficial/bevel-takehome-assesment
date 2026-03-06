@@ -1,14 +1,26 @@
 === Data cleaning report ===
 
+Nutrient IDs checked (from config): [1003, 1008, 1085, 2039]
+
 Has issues: True
 
-Summary: Cleaning checks found issues: food=1, food_nutrient=1, nutrient=0.
+Summary: Cleaning checks found issues: food=1, food_nutrient=0, nutrient=0.
 
 Food issues:
-  - Found 731 rows with leading/trailing whitespace in description (in scan).
+  - Foundation_food rows in scan (data_type=foundation_food): 436 found
+  - Duplicate fdc_id among foundation_food: none
+  - Empty or non-integer fdc_id: none
+  - Empty description: none
+  - Leading/trailing whitespace in description: 1 found
 
 Food nutrient issues:
-  - Found 1 rows with empty amount (in scan).
+  - Empty amount (among 4 nutrients we care about): none
+  - Non-numeric amount (among 4 nutrients we care about): none
+  - Duplicate id (among valid-amount rows for those nutrients): none
+  - Empty or non-integer fdc_id (among valid-amount rows): none
+  - Empty or non-integer nutrient_id (among valid-amount rows): none
 
 Nutrient issues:
-  (none)
+  - Missing required columns (id, name, unit_name): none
+  - Duplicate nutrient id: none
+  - Empty or non-integer id: none

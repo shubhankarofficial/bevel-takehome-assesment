@@ -9,7 +9,7 @@ Output is printed to the terminal and written to cleaning_report.txt in this fol
 
 from pathlib import Path
 
-from ..config import FOOD_CSV_PATH, FOOD_NUTRIENT_CSV_PATH, NUTRIENT_CSV_PATH
+from ..config import FOOD_CSV_PATH, FOOD_NUTRIENT_CSV_PATH, NUTRIENT_CSV_PATH, USDA_NUTRIENT_MAPPING
 from .report import run_cleaning_checks
 
 REPORT_FILE = Path(__file__).parent / "cleaning_report.txt"
@@ -20,10 +20,13 @@ def main() -> None:
         FOOD_CSV_PATH,
         FOOD_NUTRIENT_CSV_PATH,
         NUTRIENT_CSV_PATH,
-        max_rows_to_scan=10000,
+        max_rows_to_scan=None,  # scan all rows
     )
+    nutrient_ids = sorted(USDA_NUTRIENT_MAPPING.keys())
     lines = [
         "=== Data cleaning report ===",
+        "",
+        f"Nutrient IDs checked (from config): {nutrient_ids}",
         "",
         f"Has issues: {r.has_issues}",
         "",

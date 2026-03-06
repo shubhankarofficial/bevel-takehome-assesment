@@ -7,20 +7,20 @@ map to the nutrients we expose in the API. Keeping it in config allows:
 - Adding new nutrients later by extending the mapping (and the API enum).
 - Overriding via env or a config file in the future if needed.
 
-Default mapping (USDA Foundation Foods / nutrient.csv):
-- 2047 = Energy (Atwater General Factors), KCAL -> calories
+Mapping (from nutrient.csv):
+- 1008 = Energy -> calories
 - 1003 = Protein, G -> protein
-- 1005 = Carbohydrate, by difference, G -> carbs
-- 1004 = Total lipid (fat), G -> fat
+- 2039 = Carb -> carbs
+- 1085 = Total Fat (NLEA) -> fat
 """
 
 from typing import Dict
 
-# USDA nutrient_id -> our API key (must match FoodNutrient enum values in nutrients.py)
+# USDA nutrient_id -> our API key (must match FoodNutrient enum values in domain.nutrients)
 # Structure: int (USDA id) -> str (calories | protein | carbs | fat)
 USDA_NUTRIENT_MAPPING: Dict[int, str] = {
-    2047: "calories",   # Energy (Atwater General Factors), KCAL
+    1008: "calories",   # Energy
     1003: "protein",   # Protein, G
-    1005: "carbs",     # Carbohydrate, by difference, G
-    1004: "fat",       # Total lipid (fat), G
+    2039: "carbs",     # Carb
+    1085: "fat",       # Total Fat (NLEA)
 }

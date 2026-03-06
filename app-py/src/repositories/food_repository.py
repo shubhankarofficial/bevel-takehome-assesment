@@ -119,3 +119,86 @@ class FoodRepository:
             logger.exception("FoodRepository.count_foundation_foods failed: error=%s", e)
             raise
 
+    async def insert_food(
+        self,
+        fdc_id: int,
+        data_type: str,
+        description: Optional[str] = None,
+        publication_date: Optional[Any] = None,
+    ) -> None:
+        """Insert a single food row. Raises if fdc_id already exists (use update for that)."""
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO foods (fdc_id, data_type, description, publication_date)
+                    VALUES ($1, $2, $3, $4)
+                    """,
+                    fdc_id,
+                    data_type,
+                    description,
+                    publication_date,
+                )
+            logger.info("FoodRepository.insert_food: fdc_id=%s", fdc_id)
+        except Exception as e:
+            logger.exception("FoodRepository.insert_food failed: fdc_id=%s, error=%s", fdc_id, e)
+            raise
+
+    async def update_food(
+        self,
+        fdc_id: int,
+        *,
+        data_type: Optional[str] = None,
+        description: Optional[str] = None,
+        publication_date: Optional[Any] = None,
+    ) -> bool:
+        """Update a food row by fdc_id. Only non-None fields are updated. Returns True if a row was updated."""
+        try:
+            async with self._pool.acquire() as conn:
+                # Build dynamic update to only set provided fields
+                updates: List[str] = []
+                values: List[Any] = []
+                i = 1
+                if data_type is not None:
+                    updates.append(f"data_type = ${i}")
+                    values.append(data_type)
+                    i += 1
+                if description is not None:
+                    updates.append(f"description = ${i}")
+                    values.append(description)
+                    i += 1
+                if publication_date is not None:
+                    updates.append(f"publication_date = ${i}")
+                    values.append(publication_date)
+                    i += 1
+                if not updates:
+                    return False
+                values.append(fdc_id)
+                result = await conn.execute(
+                    f"UPDATE foods SET {', '.join(updates)} WHERE fdc_id = ${i}",
+                    *values,
+                )
+            updated = result.strip() == "UPDATE 1"
+            if updated:
+                logger.info("FoodRepository.update_food: fdc_id=%s", fdc_id)
+            return updated
+        except Exception as e:
+            logger.exception("FoodRepository.update_food failed: fdc_id=%s, error=%s", fdc_id, e)
+            raise
+
+    async def delete_food(self, fdc_id: int) -> bool:
+        """Delete a food row by fdc_id. Returns True if a row was deleted."""
+        try:
+            async with self._pool.acquire() as conn:
+                result = await conn.execute(
+                    "DELETE FROM foods WHERE fdc_id = $1",
+                    fdc_id,
+                )
+            deleted = result.strip() == "DELETE 1"
+            if deleted:
+                logger.info("FoodRepository.delete_food: fdc_id=%s", fdc_id)
+            return deleted
+        except Exception as e:
+            logger.exception("FoodRepository.delete_food failed: fdc_id=%s, error=%s", fdc_id, e)
+            raise
+

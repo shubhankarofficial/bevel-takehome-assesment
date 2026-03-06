@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import asyncpg
 
@@ -136,6 +136,134 @@ class FoodNutrientRepository:
             logger.exception(
                 "FoodNutrientRepository.count_for_food failed: fdc_id=%s, error=%s",
                 fdc_id,
+                e,
+            )
+            raise
+
+    async def insert_food_nutrient(
+        self,
+        fdc_id: int,
+        nutrient_id: int,
+        amount: float,
+        *,
+        id: Optional[int] = None,
+    ) -> int:
+        """
+        Insert a single food_nutrient row. If id is not provided, uses COALESCE(MAX(id),0)+1.
+        Returns the id of the inserted row.
+        """
+        try:
+            async with self._pool.acquire() as conn:
+                if id is not None:
+                    await conn.execute(
+                        """
+                        INSERT INTO food_nutrients (id, fdc_id, nutrient_id, amount)
+                        VALUES ($1, $2, $3, $4)
+                        """,
+                        id,
+                        fdc_id,
+                        nutrient_id,
+                        amount,
+                    )
+                    return id
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO food_nutrients (id, fdc_id, nutrient_id, amount)
+                    SELECT COALESCE(MAX(fn.id), 0) + 1, $1, $2, $3
+                    FROM food_nutrients fn
+                    RETURNING id
+                    """,
+                    fdc_id,
+                    nutrient_id,
+                    amount,
+                )
+            inserted_id = int(row["id"])
+            logger.info(
+                "FoodNutrientRepository.insert_food_nutrient: id=%s, fdc_id=%s",
+                inserted_id,
+                fdc_id,
+            )
+            return inserted_id
+        except Exception as e:
+            logger.exception(
+                "FoodNutrientRepository.insert_food_nutrient failed: fdc_id=%s, error=%s",
+                fdc_id,
+                e,
+            )
+            raise
+
+    async def update_food_nutrient(
+        self,
+        id: int,
+        *,
+        fdc_id: Optional[int] = None,
+        nutrient_id: Optional[int] = None,
+        amount: Optional[float] = None,
+    ) -> bool:
+        """Update a food_nutrient row by id. Only non-None fields are updated. Returns True if a row was updated."""
+        try:
+            async with self._pool.acquire() as conn:
+                updates: List[str] = []
+                values: List[Any] = []
+                i = 1
+                if fdc_id is not None:
+                    updates.append(f"fdc_id = ${i}")
+                    values.append(fdc_id)
+                    i += 1
+                if nutrient_id is not None:
+                    updates.append(f"nutrient_id = ${i}")
+                    values.append(nutrient_id)
+                    i += 1
+                if amount is not None:
+                    updates.append(f"amount = ${i}")
+                    values.append(amount)
+                    i += 1
+                if not updates:
+                    return False
+                values.append(id)
+                result = await conn.execute(
+                    f"UPDATE food_nutrients SET {', '.join(updates)} WHERE id = ${i}",
+                    *values,
+                )
+            updated = result.strip() == "UPDATE 1"
+            if updated:
+                logger.info("FoodNutrientRepository.update_food_nutrient: id=%s", id)
+            return updated
+        except Exception as e:
+            logger.exception(
+                "FoodNutrientRepository.update_food_nutrient failed: id=%s, error=%s",
+                id,
+                e,
+            )
+            raise
+
+    async def delete_food_nutrient(self, id: int) -> tuple[bool, Optional[int]]:
+        """
+        Delete a food_nutrient row by id.
+        Returns (deleted, fdc_id): True and the food's fdc_id if a row was deleted, else (False, None).
+        Caller can use fdc_id to check if the food has no nutrients left and delete the food if needed.
+        """
+        try:
+            async with self._pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT fdc_id FROM food_nutrients WHERE id = $1",
+                    id,
+                )
+                if row is None:
+                    return (False, None)
+                fdc_id = int(row["fdc_id"])
+                result = await conn.execute(
+                    "DELETE FROM food_nutrients WHERE id = $1",
+                    id,
+                )
+            deleted = result.strip() == "DELETE 1"
+            if deleted:
+                logger.info("FoodNutrientRepository.delete_food_nutrient: id=%s, fdc_id=%s", id, fdc_id)
+            return (deleted, fdc_id if deleted else None)
+        except Exception as e:
+            logger.exception(
+                "FoodNutrientRepository.delete_food_nutrient failed: id=%s, error=%s",
+                id,
                 e,
             )
             raise
