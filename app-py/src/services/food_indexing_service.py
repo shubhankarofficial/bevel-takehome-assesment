@@ -137,16 +137,7 @@ class FoodIndexingService:
             {"type": na.type.value, "amount": float(na.amount)} for na in nutrient_amounts
         ]
 
-        # If the food has no mapped nutrients left (for our 4 nutrient types),
-        # keep it in Postgres but remove it from the search index so it no longer matches.
-        if not nutrients_payload:
-            await self._search_index.delete_food(fdc_id)
-            logger.debug(
-                "FoodIndexingService.upsert_food_by_fdc_id: fdc_id=%s has no mapped nutrients, removed from index",
-                fdc_id,
-            )
-            return
-
+        # If the food is in our foods DB, include it in ES (with whatever nutrients it has, possibly empty).
         doc: Dict[str, Any] = {
             "fdc_id": fdc_id,
             "name": name,

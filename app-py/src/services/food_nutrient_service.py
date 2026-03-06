@@ -1,8 +1,9 @@
 """
 Service for food_nutrient (food_nutrients table) add/update/delete.
 
-Uses FoodNutrientRepository and FoodRepository. When deleting a food_nutrient, if that was
-the last nutrient for the food, the food is also deleted from foods (and NOTIFY removes it from ES).
+Uses FoodNutrientRepository and FoodRepository. Food stays in foods even when it has no
+nutrient rows; we do not delete the food when the last food_nutrient is removed (so it
+remains in the search index with empty nutrients).
 """
 
 import logging
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class FoodNutrientService:
-    """Orchestrates food_nutrient CRUD. Deletes the food from foods when its last nutrient is removed."""
+    """Orchestrates food_nutrient CRUD. Food remains in foods table when last nutrient is deleted."""
 
     def __init__(
         self,
@@ -59,17 +60,9 @@ class FoodNutrientService:
 
     async def delete_food_nutrient(self, id: int) -> bool:
         """
-        Delete a food_nutrient by id. If that was the last nutrient for the food,
-        also delete the food from foods (trigger NOTIFYs so listener removes from ES).
+        Delete a food_nutrient by id. The food stays in foods even if this was its last nutrient;
+        listener will reindex the food with empty nutrients (food remains in ES).
         Returns True if a food_nutrient row was deleted.
         """
-        deleted, fdc_id = await self._repo.delete_food_nutrient(id)
-        if deleted and fdc_id is not None:
-            remaining = await self._repo.count_for_food(fdc_id)
-            if remaining == 0:
-                await self._food_repo.delete_food(fdc_id)
-                logger.info(
-                    "FoodNutrientService: deleted last nutrient for fdc_id=%s, removed food from foods",
-                    fdc_id,
-                )
+        deleted, _fdc_id = await self._repo.delete_food_nutrient(id)
         return deleted
