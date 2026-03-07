@@ -5,18 +5,15 @@ LISTENs on food_index_events, updates Elasticsearch per notification (upsert or 
 Failures are retried up to 3 times, then logged and dropped.
 
   From app-py with venv active:
-    python scripts/run_food_index_listener.py
+    python -m src.scripts.run_food_index_listener
 
   Optional env: POSTGRES_*, ELASTICSEARCH_URL, FOOD_INDEX_NAME (see .env.example).
   Stop with Ctrl+C.
 """
 import asyncio
 import logging
-import os
 import signal
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
 
@@ -25,7 +22,7 @@ load_dotenv()
 import asyncpg
 from elasticsearch import AsyncElasticsearch
 
-from src.config import (
+from ..config import (
     ELASTICSEARCH_URL,
     FOOD_INDEX_NAME,
     NOTIFY_CHANNEL_FOOD_INDEX,
@@ -35,11 +32,12 @@ from src.config import (
     POSTGRES_PORT,
     POSTGRES_USER,
 )
-from src.elastic_search import FoodSearchIndex
-from src.listener import FoodIndexNotifyListener
-from src.repositories.food_nutrient_repository import FoodNutrientRepository
-from src.repositories.food_repository import FoodRepository
-from src.services.food_indexing_service import FoodIndexingService
+from ..db import close_engine, get_engine
+from ..elastic_search import FoodSearchIndex
+from ..listener import FoodIndexNotifyListener
+from ..repositories.food_nutrient_repository import FoodNutrientRepository
+from ..repositories.food_repository import FoodRepository
+from ..services.food_indexing_service import FoodIndexingService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,7 +57,7 @@ def _pg_config() -> dict:
 
 
 async def main() -> None:
-    pool = await asyncpg.create_pool(**_pg_config())
+    engine = get_engine()
     # Dedicated connection for LISTEN (asyncpg: don't use it for other queries)
     listen_conn = await asyncpg.connect(**_pg_config())
 
@@ -69,10 +67,9 @@ async def main() -> None:
         ssl_show_warn=False,
     )
     search_index = FoodSearchIndex(es, index_name=FOOD_INDEX_NAME)
-    food_repo = FoodRepository(pool)
-    food_nutrient_repo = FoodNutrientRepository(pool)
+    food_repo = FoodRepository(engine)
+    food_nutrient_repo = FoodNutrientRepository(engine)
     indexing_service = FoodIndexingService(
-        pool=pool,
         food_repo=food_repo,
         food_nutrient_repo=food_nutrient_repo,
         search_index=search_index,
@@ -98,7 +95,7 @@ async def main() -> None:
         await listener.run()
     finally:
         await listen_conn.close()
-        await pool.close()
+        await close_engine()
         await es.close()
 
 

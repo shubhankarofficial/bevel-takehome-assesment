@@ -50,12 +50,14 @@ class FoodSearchIndex:
                 }
             },
         )
+        logger.info("FoodSearchIndex: created index %s", self._index)
 
     async def index_food(self, doc_id: int, document: Dict[str, Any]) -> None:
         """
         Index or update a single food document.
         """
         await self._es.index(index=self._index, id=doc_id, document=document)
+        logger.debug("FoodSearchIndex: indexed fdc_id=%s", doc_id)
 
     async def bulk_index_foods(
         self, documents: Iterable[Dict[str, Any]]
@@ -79,12 +81,15 @@ class FoodSearchIndex:
             return
 
         await self._es.bulk(operations=ops)
+        num_docs = len(ops) // 2
+        logger.info("FoodSearchIndex: bulk_index_foods indexed %s documents", num_docs)
 
     async def delete_food(self, doc_id: int) -> None:
         """
         Delete a food document from the index if it exists.
         """
         await self._es.delete(index=self._index, id=doc_id, ignore=[404])
+        logger.debug("FoodSearchIndex: delete_food fdc_id=%s", doc_id)
 
     async def delete_index(self) -> None:
         """

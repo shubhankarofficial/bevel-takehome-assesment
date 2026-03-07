@@ -1,7 +1,7 @@
 """
 Food demos: show search results before and after add/update/delete to prove listener syncs ES.
 
-Ensure index exists and listener is running before running these (e.g. run_ingest).
+Ensure index exists and listener is running before running these (e.g. src.ingest.scripts.run_ingest).
 """
 
 import asyncio
@@ -52,9 +52,9 @@ def _format_foods(foods: List[Food]) -> str:
 async def _ensure_ready(es: AsyncElasticsearch) -> None:
     if not await _index_exists(es, FOOD_INDEX_NAME):
         raise RuntimeError(
-            "Index does not exist. Run ingest first: python -m src.run_ingest"
+            "Index does not exist. Run ingest first: python -m src.ingest.scripts.run_ingest"
         )
-    logger.info("Index exists. Ensure listener is running (run_ingest or run_food_index_listener).")
+    logger.info("Index exists. Ensure listener is running (src.ingest.scripts.run_ingest or src.scripts.run_food_index_listener).")
 
 
 async def _wait_for_listener() -> None:
@@ -69,7 +69,7 @@ async def demonstrate_delete_food(
     es: AsyncElasticsearch,
 ) -> None:
     """
-    Demo: delete a food. Show search results for 'Fish, haddock, raw', delete fdc_id 333374, show again.
+    Demo: delete a food. Showing search results on deleting 'Fish, haddock, raw', fdc_id 333374.
     """
     await _ensure_ready(es)
     query = DELETE_FOOD_QUERY
@@ -78,7 +78,7 @@ async def demonstrate_delete_food(
     print(f"\n--- Demonstrate DELETE food (fdc_id={fdc_id}) ---")
     print(f"Query: {query!r}\n")
 
-    print("BEFORE delete:")
+    print("BEFORE delete: Look at the first response from the search results")
     foods_before = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_before))
     print()
@@ -90,9 +90,10 @@ async def demonstrate_delete_food(
         print(f"  Deleted food fdc_id={fdc_id} from foods table. Listener will remove from ES.\n")
     await _wait_for_listener()
 
-    print("AFTER delete (same query):")
+    print("AFTER delete (same query): Look at the first response from the search results")
     foods_after = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_after))
+    print("---\n")
     print("---\n")
 
 
@@ -102,8 +103,8 @@ async def demonstrate_add_food(
     es: AsyncElasticsearch,
 ) -> None:
     """
-    Demo: add a food. If fdc_id 333374 exists, delete it. Show results for 'Fish, haddock, raw',
-    then add the food, then show again so it appears (listener indexes it).
+    Demo: adding a food. If fdc_id 333374 exists, delete it. Showing search results for 'Fish, haddock, raw',
+    then add the food, then showing again so it appears (listener indexes it).
     """
     await _ensure_ready(es)
     query = ADD_FOOD_QUERY
@@ -116,7 +117,7 @@ async def demonstrate_add_food(
     await food_service.delete_food(fdc_id)
     await _wait_for_listener()
 
-    print("BEFORE add (after ensuring food not in DB):")
+    print("BEFORE add (after ensuring food not in DB): Look at the first response from the search results")
     foods_before = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_before))
     print()
@@ -134,9 +135,10 @@ async def demonstrate_add_food(
         raise
     await _wait_for_listener()
 
-    print("AFTER add (same query):")
+    print("AFTER add (same query): Look at the first response from the search results")
     foods_after = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_after))
+    print("---\n")
     print("---\n")
 
 
@@ -146,9 +148,9 @@ async def demonstrate_update_food(
     es: AsyncElasticsearch,
 ) -> None:
     """
-    Demo: update a food name to show exact match ranks higher.
-    Show results for 'chicken balooza' (top is direct match). Then change fdc_id 2727566
-    (Chicken, drumstick, meat and skin, raw) to name 'chicken balooza', show again — it comes to top.
+    Demo: update a food name demonstation.
+    Showing results for query 'chicken balooza' Initially not present in the database. Then changing the food name with fdc_id 2727566 to name 'chicken balooza', showing again — it comes to top.
+    (Chicken, drumstick, meat and skin, raw) to name 'chicken balooza'.
     """
     await _ensure_ready(es)
     query = UPDATE_FOOD_QUERY
@@ -157,7 +159,7 @@ async def demonstrate_update_food(
     print(f"\n--- Demonstrate UPDATE food (fdc_id={fdc_id} -> name={UPDATE_FOOD_NEW_NAME!r}) ---")
     print(f"Query: {query!r}\n")
 
-    print("BEFORE update:")
+    print("BEFORE update: Look at the first response from the search results")
     foods_before = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_before))
     print()
@@ -171,8 +173,9 @@ async def demonstrate_update_food(
         print(f"  Updated fdc_id={fdc_id} name to {UPDATE_FOOD_NEW_NAME!r}. Listener will update ES.\n")
     await _wait_for_listener()
 
-    print("AFTER update (same query):")
+    print("AFTER update (same query): Look at the first response from the search results")
     foods_after = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_after))
     print("  (Updated food now exact match and should appear at top.)")
+    print("---\n")
     print("---\n")

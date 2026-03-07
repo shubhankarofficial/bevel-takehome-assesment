@@ -2,25 +2,21 @@
 Phase 1.4 verification: listen for NOTIFY on food_index_events and print payloads.
 
 Run from app-py with venv active:
-  python scripts/verify_notify.py
+  python -m src.scripts.verify_notify
 
 In another terminal, run ingest or change DB (e.g. UPDATE foods SET description = ... WHERE fdc_id = ...)
 to see notifications printed here.
 """
 import asyncio
-import os
 import sys
-
-# Run from app-py so src is on path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 import asyncpg
-from src.config import NOTIFY_CHANNEL_FOOD_INDEX
-from src.config.database import (
+from ..config import NOTIFY_CHANNEL_FOOD_INDEX
+from ..config.database import (
     POSTGRES_DB,
     POSTGRES_HOST,
     POSTGRES_PASSWORD,

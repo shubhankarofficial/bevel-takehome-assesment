@@ -5,6 +5,7 @@ uvicorn[standard]==0.24.0
 # Database
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
+sqlalchemy[asyncio]>=2.0.0
 
 # Elasticsearch
 elasticsearch==8.11.0

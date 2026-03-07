@@ -1,7 +1,7 @@
 """
 Food_nutrient demos: show search results before/after add/update/delete to prove listener syncs ES.
 
-Ensure index exists and listener is running (e.g. run_ingest).
+Ensure index exists and listener is running (e.g. src.ingest.scripts.run_ingest).
 """
 
 import asyncio
@@ -55,9 +55,9 @@ def _format_foods(foods: List[Food]) -> str:
 async def _ensure_ready(es: AsyncElasticsearch) -> None:
     if not await _index_exists(es, FOOD_INDEX_NAME):
         raise RuntimeError(
-            "Index does not exist. Run ingest first: python -m src.run_ingest"
+            "Index does not exist. Run ingest first: python -m src.ingest.scripts.run_ingest"
         )
-    logger.info("Index exists. Ensure listener is running (run_ingest or run_food_index_listener).")
+    logger.info("Index exists. Ensure listener is running (src.ingest.scripts.run_ingest or src.scripts.run_food_index_listener).")
 
 
 async def _wait_for_listener() -> None:
@@ -72,8 +72,8 @@ async def demonstrate_add_food_nutrient(
     es: AsyncElasticsearch,
 ) -> None:
     """
-    Demo: add a food_nutrient (carbs) to fdc_id 334194 (Fish, tuna, light...).
-    Show results (already has protein, fat, calories), add carbs (nutrient_id 2039), show again.
+    Demo: adding a food_nutrient (carbs) to food with fdc_id 334194 (Fish, tuna, light...).
+    Showing search results before adding carbs (nutrient_id 2039) and comparing with the results after.
     """
     await _ensure_ready(es)
     query = ADD_FN_QUERY
@@ -82,7 +82,7 @@ async def demonstrate_add_food_nutrient(
     print(f"\n--- Demonstrate ADD food_nutrient (fdc_id={fdc_id}, nutrient_id={ADD_FN_NUTRIENT_ID} carbs, amount={ADD_FN_AMOUNT}) ---")
     print(f"Query: {query!r}\n")
 
-    print("BEFORE add (food already has protein, fat, calories):")
+    print("BEFORE add (food already has protein, fat, calories): Look at the first response from the search results")
     foods_before = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_before))
     print()
@@ -100,9 +100,10 @@ async def demonstrate_add_food_nutrient(
         raise
     await _wait_for_listener()
 
-    print("AFTER add (same query; carbs should appear):")
+    print("AFTER add (same query; carbs should appear): Look at the first response from the search results")
     foods_after = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_after))
+    print("---\n")
     print("---\n")
 
 
@@ -112,7 +113,7 @@ async def demonstrate_delete_food_nutrient(
     es: AsyncElasticsearch,
 ) -> None:
     """
-    Demo: delete one food_nutrient row for fdc_id 334194 (tuna). Show before, delete one row, show after.
+    Demo: delete one food_nutrient row for fdc_id 334194 (tuna).
     """
     await _ensure_ready(es)
     query = DELETE_FN_QUERY
@@ -120,7 +121,7 @@ async def demonstrate_delete_food_nutrient(
     print(f"\n--- Demonstrate DELETE food_nutrient (fdc_id={DELETE_FN_FDC_ID}) ---")
     print(f"Query: {query!r}\n")
 
-    print("BEFORE delete:")
+    print("BEFORE delete: Look at the first response from the search results")
     foods = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods))
     print()
@@ -128,9 +129,10 @@ async def demonstrate_delete_food_nutrient(
     deleted = await food_nutrient_service.delete_food_nutrient(DELETE_FN_ROW_ONE)
     print(f"  Deleted row id={DELETE_FN_ROW_ONE}. Listener will reindex.\n")
     await _wait_for_listener()
-    print("AFTER delete (same query):")
+    print("AFTER delete (same query): Look at the first response from the search results")
     foods = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods))
+    print("---\n")
     print("---\n")
 
 
@@ -149,7 +151,7 @@ async def demonstrate_update_food_nutrient(
     print(f"\n--- Demonstrate UPDATE food_nutrient (row id={UPDATE_FN_ROW_ID} -> amount={UPDATE_FN_NEW_AMOUNT}) ---")
     print(f"Query: {query!r}\n")
 
-    print("BEFORE update (protein shown as 10.7):")
+    print("BEFORE update (protein shown as 10.7): Look at the first response from the search results")
     foods_before = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_before))
     print()
@@ -164,7 +166,8 @@ async def demonstrate_update_food_nutrient(
         print(f"  Updated food_nutrient row id={UPDATE_FN_ROW_ID} to amount={UPDATE_FN_NEW_AMOUNT}. Listener will reindex.\n")
     await _wait_for_listener()
 
-    print("AFTER update (same query; protein should show 10.9):")
+    print("AFTER update (same query; protein should show 10.9): Look at the first response from the search results")
     foods_after = await search_service.search_foods(query=query, size=10)
     print(_format_foods(foods_after))
+    print("---\n")
     print("---\n")

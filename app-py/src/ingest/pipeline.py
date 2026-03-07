@@ -7,6 +7,7 @@ MigrationService.
 """
 
 import asyncpg
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from ..elastic_search import FoodSearchIndex
 from ..es_client import es_client
@@ -25,12 +26,13 @@ class IngestPipeline:
     - Index foods into Elasticsearch via FoodIndexingService.
     """
 
-    def __init__(self, pool: asyncpg.Pool) -> None:
+    def __init__(self, pool: asyncpg.Pool, engine: AsyncEngine) -> None:
         self._pool = pool
+        self._engine = engine
         self._migrations = MigrationService(pool)
-        self._nutrient_repo = NutrientRepository(pool)
-        self._food_repo = FoodRepository(pool)
-        self._food_nutrient_repo = FoodNutrientRepository(pool)
+        self._nutrient_repo = NutrientRepository(engine)
+        self._food_repo = FoodRepository(engine)
+        self._food_nutrient_repo = FoodNutrientRepository(engine)
         self._csv_load = CsvLoadService(
             self._nutrient_repo,
             self._food_repo,
@@ -38,7 +40,6 @@ class IngestPipeline:
         )
         self._search_index = FoodSearchIndex(es_client)
         self._food_indexing = FoodIndexingService(
-            pool=self._pool,
             food_repo=self._food_repo,
             food_nutrient_repo=self._food_nutrient_repo,
             search_index=self._search_index,

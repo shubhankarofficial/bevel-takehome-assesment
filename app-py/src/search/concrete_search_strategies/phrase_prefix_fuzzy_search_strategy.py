@@ -9,9 +9,9 @@ from typing import Any, Dict, List
 
 from elasticsearch import AsyncElasticsearch
 
-from .query_sanitizer import sanitize_search_query
-from .search_strategy import SearchStrategy
-from ..config import FOOD_INDEX_NAME
+from ...config import FOOD_INDEX_NAME
+from ..search_strategy import SearchStrategy
+from ..services.query_sanitizer import sanitize_search_query
 
 
 class PhrasePrefixFuzzySearchStrategy(SearchStrategy):

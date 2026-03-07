@@ -35,12 +35,17 @@ class FoodNutrientService:
         id: Optional[int] = None,
     ) -> int:
         """Insert a food_nutrient row. Returns the id of the inserted row."""
-        return await self._repo.insert_food_nutrient(
+        inserted_id = await self._repo.insert_food_nutrient(
             fdc_id=fdc_id,
             nutrient_id=nutrient_id,
             amount=amount,
             id=id,
         )
+        logger.info(
+            "FoodNutrientService.add_food_nutrient: id=%s fdc_id=%s nutrient_id=%s",
+            inserted_id, fdc_id, nutrient_id,
+        )
+        return inserted_id
 
     async def update_food_nutrient(
         self,
@@ -51,12 +56,15 @@ class FoodNutrientService:
         amount: Optional[float] = None,
     ) -> bool:
         """Update a food_nutrient by id. Returns True if a row was updated."""
-        return await self._repo.update_food_nutrient(
+        updated = await self._repo.update_food_nutrient(
             id,
             fdc_id=fdc_id,
             nutrient_id=nutrient_id,
             amount=amount,
         )
+        if updated:
+            logger.info("FoodNutrientService.update_food_nutrient: id=%s", id)
+        return updated
 
     async def delete_food_nutrient(self, id: int) -> bool:
         """
@@ -65,4 +73,6 @@ class FoodNutrientService:
         Returns True if a food_nutrient row was deleted.
         """
         deleted, _fdc_id = await self._repo.delete_food_nutrient(id)
+        if deleted:
+            logger.info("FoodNutrientService.delete_food_nutrient: id=%s", id)
         return deleted

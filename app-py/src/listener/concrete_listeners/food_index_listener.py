@@ -16,10 +16,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import asyncpg
 
-from ..config import NOTIFY_CHANNEL_FOOD_INDEX
-from ..services.food_indexing_service import FoodIndexingService
+from ...config import NOTIFY_CHANNEL_FOOD_INDEX
+from ...services.food_indexing_service import FoodIndexingService
 
-from .base import NotifyListener
+from ..base import NotifyListener
 
 logger = logging.getLogger(__name__)
 
@@ -180,4 +180,3 @@ class FoodIndexNotifyListener(NotifyListener):
     def stop(self) -> None:
         """Signal the run loop to exit (idempotent)."""
         self._shutdown.set()
-

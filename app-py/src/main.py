@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -5,14 +6,20 @@ from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from pydantic import BaseModel
 
-from .db import get_pool, close_pool
+from .db import close_engine, close_pool, get_engine, get_pool
 from .es_client import es_client, close_es_client
+from .ingest.runner import run_ingest_once, start_listener_background
 from .repositories.food_nutrient_repository import FoodNutrientRepository
 from .repositories.food_repository import FoodRepository
 from .responses import ErrorResponse, FoodSearchResponse
-from .search.phrase_prefix_fuzzy_search_strategy import PhrasePrefixFuzzySearchStrategy
+from .schemas import (
+    AddFoodBody,
+    AddFoodNutrientBody,
+    UpdateFoodBody,
+    UpdateFoodNutrientBody,
+)
+from .search.concrete_search_strategies.phrase_prefix_fuzzy_search_strategy import PhrasePrefixFuzzySearchStrategy
 from .services import (
     FoodNutrientService,
     FoodSearchResponseService,
@@ -23,23 +30,57 @@ from .services import (
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+# So ingest and listener logs show when running via uvicorn
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle - startup and shutdown."""
+    """Run ingest once on startup, start NOTIFY listener in background, then serve API."""
     print(f"Server starting on port {os.getenv('PORT', 3000)}")
+
+    pool = await get_pool()
+    engine = get_engine()
+
+    logger.info("Running ingest pipeline...")
+    await run_ingest_once(pool, engine)
+    logger.info("Ingest completed. Starting NOTIFY listener...")
+
+    listener, listen_conn, listener_task = await start_listener_background(engine)
+    app.state._listener = listener
+    app.state._listen_conn = listen_conn
+    app.state._listener_task = listener_task
+
+    # API state
     strategy = PhrasePrefixFuzzySearchStrategy(es_client)
     app.state.search_service = SearchService(strategy)
     app.state.food_search_response_service = FoodSearchResponseService()
-    pool = await get_pool()
-    app.state.food_repo = FoodRepository(pool)
-    app.state.food_nutrient_repo = FoodNutrientRepository(pool)
+    app.state.food_repo = FoodRepository(engine)
+    app.state.food_nutrient_repo = FoodNutrientRepository(engine)
     app.state.food_service = FoodService(app.state.food_repo)
     app.state.food_nutrient_service = FoodNutrientService(
         app.state.food_nutrient_repo, app.state.food_repo
     )
+
     yield
+
+    logger.info("Shutting down listener...")
+    app.state._listener.stop()
+    try:
+        await asyncio.wait_for(app.state._listener_task, timeout=5.0)
+    except asyncio.TimeoutError:
+        app.state._listener_task.cancel()
+        try:
+            await app.state._listener_task
+        except asyncio.CancelledError:
+            pass
+    await app.state._listen_conn.close()
     await close_pool()
+    await close_engine()
     await close_es_client()
 
 
@@ -58,10 +99,13 @@ async def health_check():
     Health check endpoint that verifies database and Elasticsearch connections.
     """
     try:
+        from sqlalchemy import text
+
         # Check database connection
-        pool = await get_pool()
-        async with pool.acquire() as connection:
-            db_time = await connection.fetchval("SELECT NOW()")
+        engine = get_engine()
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT NOW()"))
+            db_time = result.scalar_one()
 
         # Check Elasticsearch connection
         es_info = await es_client.info()
@@ -120,19 +164,6 @@ def _is_search_failure(e: Exception) -> bool:
 # --- Demo endpoints: add/update/delete foods and food_nutrients (different DBs → different services) ---
 
 
-class AddFoodBody(BaseModel):
-    fdc_id: int
-    data_type: str = "foundation_food"
-    description: Optional[str] = None
-    publication_date: Optional[str] = None
-
-
-class UpdateFoodBody(BaseModel):
-    data_type: Optional[str] = None
-    description: Optional[str] = None
-    publication_date: Optional[str] = None
-
-
 @app.post("/demo/foods")
 async def demo_add_food(body: AddFoodBody):
     """Add a food row (foods table). Trigger will NOTIFY; listener will sync index if running."""
@@ -174,18 +205,6 @@ async def demo_delete_food(fdc_id: int = Path(..., description="Food fdc_id")):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"No food found for fdc_id={fdc_id}")
     return {"ok": True, "fdc_id": fdc_id}
-
-
-class AddFoodNutrientBody(BaseModel):
-    fdc_id: int
-    nutrient_id: int
-    amount: float
-
-
-class UpdateFoodNutrientBody(BaseModel):
-    fdc_id: Optional[int] = None
-    nutrient_id: Optional[int] = None
-    amount: Optional[float] = None
 
 
 @app.post("/demo/food-nutrients")

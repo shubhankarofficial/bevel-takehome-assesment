@@ -8,8 +8,6 @@ document per food so that foods can be searched by name.
 import logging
 from typing import Any, Dict, List
 
-import asyncpg
-
 from ..config import INDEX_BULK_BATCH_SIZE
 from ..elastic_search import FoodSearchIndex
 from ..repositories.food_nutrient_repository import FoodNutrientRepository
@@ -29,13 +27,11 @@ class FoodIndexingService:
 
     def __init__(
         self,
-        pool: asyncpg.Pool,
         food_repo: FoodRepository,
         food_nutrient_repo: FoodNutrientRepository,
         search_index: FoodSearchIndex,
         batch_size: int = INDEX_BULK_BATCH_SIZE,
     ) -> None:
-        self._pool = pool
         self._food_repo = food_repo
         self._food_nutrient_repo = food_nutrient_repo
         self._search_index = search_index

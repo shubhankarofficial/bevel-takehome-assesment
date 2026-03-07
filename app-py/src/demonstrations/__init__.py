@@ -1,7 +1,7 @@
 """
 Demonstrations of listener functionality: run search, change DB, run search again to show ES updates.
 
-Requires ingest to have been run (index exists) and listener to be running (run_ingest or run_food_index_listener).
+Requires ingest to have been run (index exists) and listener to be running (src.ingest.scripts.run_ingest or src.scripts.run_food_index_listener).
 """
 
 from .food_demos import (

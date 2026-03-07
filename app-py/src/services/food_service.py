@@ -32,6 +32,7 @@ class FoodService:
             description=description,
             publication_date=publication_date,
         )
+        logger.info("FoodService.add_food: fdc_id=%s data_type=%s", fdc_id, data_type)
 
     async def update_food(
         self,
@@ -42,13 +43,19 @@ class FoodService:
         publication_date: Optional[Any] = None,
     ) -> bool:
         """Update a food by fdc_id. Returns True if a row was updated."""
-        return await self._repo.update_food(
+        updated = await self._repo.update_food(
             fdc_id,
             data_type=data_type,
             description=description,
             publication_date=publication_date,
         )
+        if updated:
+            logger.info("FoodService.update_food: fdc_id=%s", fdc_id)
+        return updated
 
     async def delete_food(self, fdc_id: int) -> bool:
         """Delete a food by fdc_id. Returns True if a row was deleted."""
-        return await self._repo.delete_food(fdc_id)
+        deleted = await self._repo.delete_food(fdc_id)
+        if deleted:
+            logger.info("FoodService.delete_food: fdc_id=%s", fdc_id)
+        return deleted

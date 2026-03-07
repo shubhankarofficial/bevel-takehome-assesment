@@ -7,6 +7,6 @@ Listener process for Postgres NOTIFY → Elasticsearch index sync.
 """
 
 from .base import NotifyListener
-from .food_index_listener import FoodIndexNotifyListener
+from .concrete_listeners import FoodIndexNotifyListener
 
 __all__ = ["NotifyListener", "FoodIndexNotifyListener"]

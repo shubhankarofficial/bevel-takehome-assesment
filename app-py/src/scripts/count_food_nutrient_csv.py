@@ -1,13 +1,13 @@
 """
 One-off script: count food_nutrient.csv rows the same way CsvLoadService does.
-Run from app-py: python scripts/count_food_nutrient_csv.py
+Run from app-py: python -m src.scripts.count_food_nutrient_csv
 """
 import csv
 import sys
 from pathlib import Path
 
-# Paths match config
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Paths match config (src/scripts -> app-py is parent.parent.parent)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CSV_DIR = BASE_DIR.parent / "csv"
 FOOD_CSV_PATH = CSV_DIR / "food.csv"
 FOOD_NUTRIENT_CSV_PATH = CSV_DIR / "food_nutrient.csv"

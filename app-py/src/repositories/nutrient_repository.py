@@ -1,11 +1,16 @@
 """
 Repository for the nutrients table in Postgres.
+Uses SQLAlchemy async engine; same public API as before (dict returns, same method names).
 """
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-import asyncpg
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+
+from src.models import Nutrient
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +20,11 @@ class NutrientRepository:
     Repository for nutrient reference data (id, name, unit_name).
     """
 
-    def __init__(self, pool: asyncpg.Pool) -> None:
-        self._pool = pool
+    def __init__(self, engine: AsyncEngine) -> None:
+        self._engine = engine
+
+    def _session(self) -> AsyncSession:
+        return AsyncSession(self._engine, expire_on_commit=False)
 
     async def bulk_insert(
         self,
@@ -29,17 +37,18 @@ class NutrientRepository:
         if not rows:
             return 0
         try:
-            async with self._pool.acquire() as conn:
-                await conn.executemany(
-                    """
-                    INSERT INTO nutrients (id, name, unit_name)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (id) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        unit_name = EXCLUDED.unit_name
-                    """,
-                    rows,
-                )
+            values = [
+                {"id": r[0], "name": r[1], "unit_name": r[2]}
+                for r in rows
+            ]
+            ins = pg_insert(Nutrient).values(values)
+            stmt = ins.on_conflict_do_update(
+                index_elements=["id"],
+                set_={"name": ins.excluded.name, "unit_name": ins.excluded.unit_name},
+            )
+            async with self._session() as session:
+                await session.execute(stmt)
+                await session.commit()
             logger.info("NutrientRepository.bulk_insert completed: inserted %s rows", len(rows))
             return len(rows)
         except Exception as e:
@@ -53,18 +62,18 @@ class NutrientRepository:
     async def get_by_id(self, nutrient_id: int) -> Optional[Dict[str, Any]]:
         """Fetch a single nutrient row by id."""
         try:
-            async with self._pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    """
-                    SELECT id, name, unit_name
-                    FROM nutrients
-                    WHERE id = $1
-                    """,
-                    nutrient_id,
+            async with self._session() as session:
+                result = await session.execute(
+                    select(Nutrient).where(Nutrient.id == nutrient_id)
                 )
+                row = result.scalar_one_or_none()
             if row is not None:
                 logger.debug("NutrientRepository.get_by_id found: nutrient_id=%s", nutrient_id)
-            return dict(row) if row is not None else None
+            return (
+                {"id": row.id, "name": row.name, "unit_name": row.unit_name}
+                if row is not None
+                else None
+            )
         except Exception as e:
             logger.exception(
                 "NutrientRepository.get_by_id failed: nutrient_id=%s, error=%s",
@@ -76,8 +85,11 @@ class NutrientRepository:
     async def count(self) -> int:
         """Return total number of rows in nutrients (for logging/observability)."""
         try:
-            async with self._pool.acquire() as conn:
-                n = await conn.fetchval("SELECT COUNT(*) FROM nutrients")
+            from sqlalchemy import func
+
+            async with self._session() as session:
+                result = await session.execute(select(func.count()).select_from(Nutrient))
+                n = result.scalar_one()
             count = int(n)
             logger.debug("NutrientRepository.count: %s", count)
             return count

@@ -2,8 +2,8 @@ from typing import Any, Dict, List
 
 from elasticsearch import AsyncElasticsearch
 
-from .search_strategy import SearchStrategy
-from ..config import FOOD_INDEX_NAME
+from ...config import FOOD_INDEX_NAME
+from ..search_strategy import SearchStrategy
 
 
 class SimpleTextSearchStrategy(SearchStrategy):
@@ -34,4 +34,3 @@ class SimpleTextSearchStrategy(SearchStrategy):
         )
         hits = response.get("hits", {}).get("hits", [])
         return hits
-

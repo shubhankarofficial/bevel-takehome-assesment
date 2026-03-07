@@ -1,13 +1,7 @@
 """
 Run food and food_nutrient demos: show search before/after delete, add, update.
 
-Requires: ingest done (index exists) and listener running (e.g. run_ingest or run_food_index_listener).
-
-Usage:
-  cd app-py && source src/venv/bin/activate
-  python -m src.demonstrations.run_food_demos                    # run all six
-  python -m src.demonstrations.run_food_demos --delete --add --update   # food demos only
-  python -m src.demonstrations.run_food_demos --add-fn --delete-fn --update-fn  # food_nutrient demos only
+Requires: ingest done (index exists) and listener running (e.g. src.ingest.scripts.run_ingest or src.scripts.run_food_index_listener).
 """
 
 import argparse
@@ -23,7 +17,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.db import close_pool, get_pool
+from src.db import close_engine, get_engine
 from src.demonstrations.food_demos import (
     demonstrate_add_food,
     demonstrate_delete_food,
@@ -37,7 +31,7 @@ from src.demonstrations.food_nutrient_demos import (
 from src.es_client import close_es_client, es_client
 from src.repositories.food_nutrient_repository import FoodNutrientRepository
 from src.repositories.food_repository import FoodRepository
-from src.search.phrase_prefix_fuzzy_search_strategy import PhrasePrefixFuzzySearchStrategy
+from src.search.concrete_search_strategies.phrase_prefix_fuzzy_search_strategy import PhrasePrefixFuzzySearchStrategy
 from src.services.food_nutrient_service import FoodNutrientService
 from src.services.food_service import FoodService
 from src.services.search_service import SearchService
@@ -59,9 +53,9 @@ async def main() -> None:
     any_selected = args.delete or args.add or args.update or args.add_fn or args.delete_fn or args.update_fn
     run_all = not any_selected
 
-    pool = await get_pool()
-    food_repo = FoodRepository(pool)
-    food_nutrient_repo = FoodNutrientRepository(pool)
+    engine = get_engine()
+    food_repo = FoodRepository(engine)
+    food_nutrient_repo = FoodNutrientRepository(engine)
     food_service = FoodService(food_repo)
     food_nutrient_service = FoodNutrientService(food_nutrient_repo, food_repo)
     strategy = PhrasePrefixFuzzySearchStrategy(es_client)
@@ -81,7 +75,7 @@ async def main() -> None:
         if run_all or args.update_fn:
             await demonstrate_update_food_nutrient(search_service, food_nutrient_service, es_client)
     finally:
-        await close_pool()
+        await close_engine()
         await close_es_client()
 
 
